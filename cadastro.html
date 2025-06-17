@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cadastro - LevaEla</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBZa8UhRH8dp3l4kx6cZZWdUTZbSW5nH-E",
+      authDomain: "levaela.firebaseapp.com",
+      databaseURL: "https://levaela-default-rtdb.firebaseio.com",
+      projectId: "levaela",
+      storageBucket: "levaela.appspot.com",
+      messagingSenderId: "136273132346",
+      appId: "1:136273132346:web:8fca530c9c039ceaaeae03"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    window.cadastrar = async function cadastrar() {
+      const nome = document.getElementById('nome').value;
+      const email = document.getElementById('email').value;
+      const senha = document.getElementById('senha').value;
+      const confirmarSenha = document.getElementById('confirmarSenha').value;
+
+      if (senha !== confirmarSenha) {
+        alert("As senhas não coincidem.");
+        return;
+      }
+
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
+        await updateProfile(userCredential.user, { displayName: nome });
+        alert("Cadastro realizado com sucesso!");
+        window.location.href = "login.html";
+      } catch (error) {
+        alert("Erro no cadastro: " + error.message);
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(to bottom, #7b1e7a, #ea638c);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      justify-content: center;
+      color: white;
+    }
+
+    img {
+      max-height: 100px;
+      margin-bottom: 30px;
+    }
+
+    form {
+      background-color: white;
+      color: #7b1e7a;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      width: 90%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    input {
+      padding: 0.8rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    button {
+      background-color: #ea638c;
+      color: white;
+      border: none;
+      padding: 1rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #d45680;
+    }
+  </style>
+</head>
+<body>
+  <img src="https://i.imgur.com/1n7hPPu.png" alt="Logo LevaEla" />
+  <form onsubmit="event.preventDefault(); cadastrar();">
+    <h2>Cadastro</h2>
+    <input type="text" id="nome" placeholder="Nome completo" required />
+    <input type="email" id="email" placeholder="E-mail" required />
+    <input type="password" id="senha" placeholder="Senha" required />
+    <input type="password" id="confirmarSenha" placeholder="Confirmar senha" required />
+    <button type="submit">Cadastrar</button>
+  </form>
+</body>
+</html>

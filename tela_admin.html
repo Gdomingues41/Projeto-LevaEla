@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LevaEla - Admin</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #7b1e7a;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      background-color: white;
+      width: 100%;
+      padding: 1rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    header img {
+      max-height: 80px;
+    }
+
+    h2 {
+      margin-top: 2rem;
+      color: #fff200;
+    }
+
+    table {
+      width: 90%;
+      background-color: white;
+      color: #7b1e7a;
+      border-collapse: collapse;
+      margin-bottom: 2rem;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+    }
+
+    th, td {
+      padding: 1rem;
+      border-bottom: 1px solid #ccc;
+      text-align: left;
+    }
+
+    th {
+      background-color: #ea638c;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="logo_levaela.png" alt="LevaEla Logo" />
+  </header>
+
+  <h2>Corridas Aceitas</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Origem</th>
+        <th>Destino</th>
+        <th>Distância (km)</th>
+        <th>Valor Total</th>
+        <th>Comissão (10%)</th>
+        <th>Motorista</th>
+        <th>Data</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaCorridas"></tbody>
+  </table>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBZa8UhRH8dp3l4kx6cZZWdUTZbSW5nH-E",
+      authDomain: "levaela.firebaseapp.com",
+      databaseURL: "https://levaela-default-rtdb.firebaseio.com",
+      projectId: "levaela",
+      storageBucket: "levaela.appspot.com",
+      messagingSenderId: "136273132346",
+      appId: "1:136273132346:web:8fca530c9c039ceaaeae03"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const tabela = document.getElementById('tabelaCorridas');
+
+    const corridasRef = ref(db, 'corridas_aceitas');
+    onValue(corridasRef, snapshot => {
+      tabela.innerHTML = '';
+      const data = snapshot.val();
+      for (const motoristaId in data) {
+        const corridas = data[motoristaId];
+        for (const key in corridas) {
+          const c = corridas[key];
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${c.origem}</td>
+            <td>${c.destino}</td>
+            <td>${c.distancia_km}</td>
+            <td>R$ ${c.valor_total}</td>
+            <td>R$ ${c.comissao}</td>
+            <td>R$ ${c.valor_motorista}</td>
+            <td>${new Date(c.data).toLocaleString('pt-BR')}</td>
+          `;
+          tabela.appendChild(row);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
