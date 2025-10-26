@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LevaEla - Meu Perfil</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-purple-900 min-h-screen flex flex-col items-center justify-center p-4">
+
+  <div class="bg-white text-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
+    
+    <h1 class="text-2xl font-bold text-purple-900 mb-6">Meu Perfil</h1>
+
+    <div class="relative w-32 h-32 mx-auto mb-4">
+      <img id="userPhoto" src="https://i.imgur.com/34f3Q25.png" alt="Foto do Perfil" class="w-full h-full rounded-full object-cover border-4 border-purple-200">
+      <label for="fileInput" class="absolute bottom-0 right-0 bg-purple-700 hover:bg-purple-800 text-white rounded-full h-10 w-10 flex items-center justify-center cursor-pointer shadow-md">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </label>
+      <input type="file" id="fileInput" class="hidden" accept="image/*">
+    </div>
+
+    <h2 id="userName" class="text-xl font-semibold">Carregando...</h2>
+    <p id="userEmail" class="text-gray-500 mb-6">...</p>
+
+    <button id="saveButton" class="bg-yellow-400 hover:bg-yellow-500 text-purple-900 font-bold py-2 px-6 rounded-lg w-full disabled:bg-gray-300">Salvar Foto</button>
+    <div id="statusMessage" class="mt-4 text-sm font-medium"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+    import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBZa8UhRH8dp3l4kx6cZZWdUTZbSW5nH-E",
+      authDomain: "levaela.firebaseapp.com",
+      databaseURL: "https://levaela-default-rtdb.firebaseio.com",
+      projectId: "levaela",
+      storageBucket: "levaela.appspot.com",
+      messagingSenderId: "136273132346",
+      appId: "1:136273132346:web:8fca530c9c039ceaaeae03"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
+    const storage = getStorage(app);
+
+    const userPhoto = document.getElementById('userPhoto');
+    const fileInput = document.getElementById('fileInput');
+    const userName = document.getElementById('userName');
+    const userEmail = document.getElementById('userEmail');
+    const saveButton = document.getElementById('saveButton');
+    const statusMessage = document.getElementById('statusMessage');
+
+    let currentUser = null;
+    let selectedFile = null;
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        loadUserProfile(user);
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+
+    async function loadUserProfile(user) {
+      userName.textContent = user.displayName || "Nome não definido";
+      userEmail.textContent = user.email;
+
+      const userRef = ref(database, `usuarios/${user.uid}`);
+      const snapshot = await get(userRef);
+      if (snapshot.exists() && snapshot.val().profileImageUrl) {
+        userPhoto.src = snapshot.val().profileImageUrl;
+      }
+    }
+
+    // Pré-visualização da imagem selecionada
+    fileInput.addEventListener('change', (e) => {
+      selectedFile = e.target.files[0];
+      if (selectedFile) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          userPhoto.src = event.target.result;
+        };
+        reader.readAsDataURL(selectedFile);
+      }
+    });
+
+    // Salvar a nova foto
+    saveButton.addEventListener('click', async () => {
+      if (!selectedFile) {
+        statusMessage.textContent = "Por favor, selecione uma nova foto primeiro.";
+        statusMessage.className = "mt-4 text-sm font-medium text-red-500";
+        return;
+      }
+      if (!currentUser) return;
+
+      saveButton.disabled = true;
+      saveButton.textContent = "Enviando...";
+      statusMessage.textContent = "";
+
+      try {
+        const filePath = `profile_pictures/${currentUser.uid}/${selectedFile.name}`;
+        const fileRef = storageRef(storage, filePath);
+        
+        // 1. Faz o upload do arquivo
+        await uploadBytes(fileRef, selectedFile);
+        
+        // 2. Pega a URL do arquivo
+        const url = await getDownloadURL(fileRef);
+
+        // 3. Salva a URL no perfil do usuário no Realtime Database
+        const userDbRef = ref(database, `usuarios/${currentUser.uid}`);
+        await update(userDbRef, {
+          profileImageUrl: url
+        });
+
+        statusMessage.textContent = "Foto de perfil atualizada com sucesso!";
+        statusMessage.className = "mt-4 text-sm font-medium text-green-600";
+        selectedFile = null; // Reseta a seleção
+      } catch (error) {
+        console.error("Erro ao salvar a foto:", error);
+        statusMessage.textContent = "Erro ao salvar a foto. Tente novamente.";
+        statusMessage.className = "mt-4 text-sm font-medium text-red-500";
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = "Salvar Foto";
+      }
+    });
+  </script>
+</body>
+</html>

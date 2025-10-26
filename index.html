@@ -7,6 +7,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBZa8UhRH8dp3l4kx6cZZWdUTZbSW5nH-E",
@@ -20,91 +21,108 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const database = getDatabase(app);
+
+    // Lógica para mostrar/esconder a seleção de veículo
+    window.addEventListener('DOMContentLoaded', () => {
+        const userTypeRadios = document.querySelectorAll('input[name="userType"]');
+        const vehicleTypeDiv = document.getElementById('vehicleTypeDiv');
+        
+        userTypeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'motorista') {
+                    vehicleTypeDiv.style.display = 'block';
+                } else {
+                    vehicleTypeDiv.style.display = 'none';
+                }
+            });
+        });
+    });
+
 
     window.cadastrar = async function cadastrar() {
       const nome = document.getElementById('nome').value;
       const email = document.getElementById('email').value;
       const senha = document.getElementById('senha').value;
       const confirmarSenha = document.getElementById('confirmarSenha').value;
+      const userType = document.querySelector('input[name="userType"]:checked').value;
 
       if (senha !== confirmarSenha) {
         alert("As senhas não coincidem.");
         return;
       }
+      
+      const userData = {
+        nome: nome,
+        email: email,
+        tipo: userType
+      };
+
+      if (userType === 'motorista') {
+        const vehicleType = document.querySelector('input[name="vehicleType"]:checked');
+        if (!vehicleType) {
+            alert("Por favor, selecione o tipo de veículo.");
+            return;
+        }
+        userData.tipoVeiculo = vehicleType.value;
+      }
 
       try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
-        await updateProfile(userCredential.user, { displayName: nome });
-        alert("Cadastro realizado com sucesso!");
-        window.location.href = "login.html";
+        const user = userCredential.user;
+        await updateProfile(user, { displayName: nome });
+
+        await set(ref(database, 'usuarios/' + user.uid), userData);
+        
+        if (userType === 'motorista') {
+            alert("Cadastro inicial realizado! Agora envie seus documentos.");
+            window.location.href = "upload_documentos.html"; 
+        } else {
+            alert("Cadastro realizado com sucesso!");
+            window.location.href = "login.html";
+        }
       } catch (error) {
         alert("Erro no cadastro: " + error.message);
       }
     };
   </script>
+  
   <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      background: linear-gradient(to bottom, #7b1e7a, #ea638c);
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      height: 100vh;
-      justify-content: center;
-      color: white;
-    }
-
-    img {
-      max-height: 100px;
-      margin-bottom: 30px;
-    }
-
-    form {
-      background-color: white;
-      color: #7b1e7a;
-      padding: 2rem;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      width: 90%;
-      max-width: 400px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    input {
-      padding: 0.8rem;
-      margin-bottom: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      font-size: 1rem;
-    }
-
-    button {
-      background-color: #ea638c;
-      color: white;
-      border: none;
-      padding: 1rem;
-      border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #d45680;
-    }
+    body { font-family: 'Arial', sans-serif; background: linear-gradient(to bottom, #7b1e7a, #ea638c); margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; justify-content: center; color: white; }
+    img { max-height: 150px; margin-bottom: 30px; }
+    form { background-color: white; color: #7b1e7a; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); width: 90%; max-width: 400px; display: flex; flex-direction: column; }
+    input { padding: 0.8rem; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
+    button { background-color: #ea638c; color: white; border: none; padding: 1rem; border-radius: 8px; font-size: 1rem; cursor: pointer; }
+    .selection-group { margin-bottom: 1.5rem; text-align: center; font-weight: bold; }
   </style>
 </head>
 <body>
   <img src="https://i.imgur.com/1n7hPPu.png" alt="Logo LevaEla" />
+  
   <form onsubmit="event.preventDefault(); cadastrar();">
     <h2>Cadastro</h2>
     <input type="text" id="nome" placeholder="Nome completo" required />
     <input type="email" id="email" placeholder="E-mail" required />
-    <input type="password" id="senha" placeholder="Senha" required />
+    <input type="password" id="senha" placeholder="Senha" minlength="6" required />
     <input type="password" id="confirmarSenha" placeholder="Confirmar senha" required />
+
+    <div class="selection-group">
+      <span>Eu sou:</span>
+      <label style="margin-left: 1.5rem;"><input type="radio" name="userType" value="passageira" checked> Passageira</label>
+      <label style="margin-left: 1.5rem;"><input type="radio" name="userType" value="motorista"> Motorista</label>
+    </div>
+    
+    <div id="vehicleTypeDiv" class="selection-group" style="display: none;">
+      <hr style="margin: 0 0 1.5rem 0; border-color: #eee;">
+      <span>Meu veículo é:</span>
+      <label style="margin-left: 1.5rem;"><input type="radio" name="vehicleType" value="carro"> Carro</label>
+      <label style="margin-left: 1.5rem;"><input type="radio" name="vehicleType" value="moto"> Moto</label>
+    </div>
+    
     <button type="submit">Cadastrar</button>
+    <div style="text-align: center; margin-top: 1rem; color: #7b1e7a; font-size: 0.9rem;">
+        Já tem uma conta? <a href="login.html" style="text-decoration: underline; color: #ea638c;">Clique aqui</a>.
+    </div>
   </form>
 </body>
 </html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>LevaEla - Painel Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #f4f4f4;
+      padding: 1rem;
+    }
+    header {
+      background-color: white;
+      padding: 1rem;
+      text-align: center;
+      border-bottom: 2px solid #ccc;
+    }
+    header img {
+      height: 60px;
+    }
+    h2 {
+      color: #7b1e7a;
+      margin-top: 1rem;
+    }
+    .motorista {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .documentos {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .documentos img {
+      max-height: 150px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .acoes {
+      margin-top: 1rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      margin-right: 1rem;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .aprovar {
+      background-color: #4caf50;
+      color: white;
+    }
+    .reprovar {
+      background-color: #f44336;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <img src="https://i.imgur.com/1n7hPPu.png" alt="LevaEla Logo" />
+  </header>
+
+  <h2>Motoristas Pendentes</h2>
+  <div id="listaMotoristas"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBZa8UhRH8dp3l4kx6cZZWdUTZbSW5nH-E",
+      authDomain: "levaela.firebaseapp.com",
+      databaseURL: "https://levaela-default-rtdb.firebaseio.com",
+      projectId: "levaela",
+      storageBucket: "levaela.appspot.com",
+      messagingSenderId: "136273132346",
+      appId: "1:136273132346:web:8fca530c9c039ceaaeae03"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const lista = document.getElementById('listaMotoristas');
+
+    const motoristasRef = ref(db, 'motoristas');
+    onValue(motoristasRef, snapshot => {
+      lista.innerHTML = '';
+      const dados = snapshot.val();
+      for (const uid in dados) {
+        const m = dados[uid];
+        if (m.status === 'pendente') {
+          const div = document.createElement('div');
+          div.className = 'motorista';
+          div.innerHTML = `
+            <strong>Nome:</strong> ${m.nome}<br>
+            <strong>Email:</strong> ${m.email}<br>
+            <div class="documentos">
+              <img src="${m.cnh_frente_url}" alt="CNH Frente">
+              <img src="${m.cnh_verso_url}" alt="CNH Verso">
+            </div>
+            <div class="acoes">
+              <button class="aprovar">Aprovar</button>
+              <button class="reprovar">Reprovar</button>
+            </div>
+          `;
+          const btns = div.querySelector('.acoes');
+          btns.querySelector('.aprovar').onclick = () => {
+            update(ref(db, 'motoristas/' + uid), { status: 'aprovado' });
+            div.remove();
+          };
+          btns.querySelector('.reprovar').onclick = () => {
+            update(ref(db, 'motoristas/' + uid), { status: 'reprovado' });
+            div.remove();
+          };
+          lista.appendChild(div);
+        }
+      }
+    });
+  </script>
+
+</body>
+</html>

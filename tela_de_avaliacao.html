@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LevaEla - Avalie sua Viagem</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .rose-rating img {
+      transition: transform 0.2s, filter 0.2s;
+    }
+
+    .rose-rating img:hover {
+      filter: grayscale(100%);
+      transform: scale(1.1);
+    }
+
+    .rose-rating img.selected {
+      filter: none;
+      transform: scale(1.2);
+    }
+  </style>
+</head>
+<body class="bg-purple-900 min-h-screen flex flex-col items-center justify-center p-4">
+
+  <div class="bg-white text-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
+    <h1 id="ratingTitle" class="text-2xl font-bold text-purple-900 mb-4">Como foi sua viagem?</h1>
+
+    <img id="userPhoto" src="https://i.imgur.com/34f3Q25.png" alt="Foto do Perfil" class="w-24 h-24 mx-auto rounded-full object-cover border-4 border-purple-200 mb-2">
+    <h2 id="userName" class="text-xl font-semibold">Carregando...</h2>
+
+    <div id="rose-container" class="rose-rating flex justify-center text-gray-300 my-6 cursor-pointer text-5xl">
+      <img src="images/roses.png" alt="Ícone de Rosa" data-value="1" class="h-12 w-12" />
+      <img src="images/roses.png" alt="Ícone de Rosa" data-value="2" class="h-12 w-12" />
+      <img src="images/roses.png" alt="Ícone de Rosa" data-value="3" class="h-12 w-12" />
+      <img src="images/roses.png" alt="Ícone de Rosa" data-value="4" class="h-12 w-12" />
+      <img src="images/roses.png" alt="Ícone de Rosa" data-value="5" class="h-12 w-12" />
+    </div>
+
+    <button id="submitRating" class="bg-yellow-400 hover:bg-yellow-500 text-purple-900 font-bold py-3 px-6 rounded-lg w-full text-lg">Enviar Avaliação</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBZa8UhRH8dp3l4kx6cZZWdUTZbSW5nH-E",
+      authDomain: "levaela.firebaseapp.com",
+      databaseURL: "https://levaela-default-rtdb.firebaseio.com",
+      projectId: "levaela",
+      storageBucket: "levaela.appspot.com",
+      messagingSenderId: "136273132346",
+      appId: "1:136273132346:web:8fca530c9c039ceaaeae03"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
+
+    let selectedRating = 0;
+    let avaliadoId = null;
+
+    const roses = document.querySelectorAll('#rose-container img');
+    roses.forEach(rose => {
+      rose.addEventListener('click', () => {
+        selectedRating = parseInt(rose.dataset.value);
+        roses.forEach(img => {
+          img.classList.remove('selected');
+        });
+        rose.classList.add('selected');
+      });
+    });
+
+    onAuthStateChanged(auth, async user => {
+      if (user) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const corridaId = urlParams.get('corridaId');
+
+        if (corridaId) {
+          const corridaRef = ref(database, `corridas_aceitas/${corridaId}`);
+          const corridaSnapshot = await get(corridaRef);
+
+          if (corridaSnapshot.exists()) {
+            const corridaData = corridaSnapshot.val();
+            const avaliadorId = user.uid;
+
+            if (corridaData.passageiraId === avaliadorId) {
+              avaliadoId = corridaData.motoristaId;
+              document.getElementById('ratingTitle').textContent = "Avalie o Motorista";
+            } else if (corridaData.motoristaId === avaliadorId) {
+              avaliadoId = corridaData.passageiraId;
+              document.getElementById('ratingTitle').textContent = "Avalie a Passageira";
+            }
+            
+            if (avaliadoId) {
+              const avaliadoRef = ref(database, `usuarios/${avaliadoId}`);
+              const avaliadoSnapshot = await get(avaliadoRef);
+              if (avaliadoSnapshot.exists()) {
+                const avaliadoData = avaliadoSnapshot.val();
+                document.getElementById('userName').textContent = avaliadoData.nome || "Nome não definido";
+                document.getElementById('userPhoto').src = avaliadoData.profileImageUrl || "https://i.imgur.com/34f3Q25.png";
+              }
+            } else {
+              alert("Corrida inválida ou usuário não autorizado.");
+              window.location.href = "login.html";
+            }
+          } else {
+            alert("Corrida não encontrada.");
+            window.location.href = "login.html";
+          }
+        } else {
+          alert("ID da corrida não fornecido.");
+          window.location.href = "login.html";
+        }
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+
+    document.getElementById('submitRating').addEventListener('click', async () => {
+      if (selectedRating === 0) {
+        alert("Por favor, selecione uma avaliação.");
+        return;
+      }
+      if (!avaliadoId) {
+        alert("Usuário a ser avaliado não encontrado.");
+        return;
+      }
+
+      const avaliacaoRef = ref(database, `avaliacoes/${avaliadoId}`);
+      await set(avaliacaoRef, { rating: selectedRating });
+
+      alert("Avaliação salva com sucesso!");
+      window.location.href = "login.html"; // Redireciona para o login após a avaliação
+    });
+  </script>
+</body>
+</html>
