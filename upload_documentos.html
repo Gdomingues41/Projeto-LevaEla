@@ -92,9 +92,13 @@
 
   <div class="container">
     <h2>Quase lá!</h2>
-    <p>Para sua segurança e a de nossas passageiras, precisamos que envie uma foto da sua CNH (frente e verso).</p>
+    <p>Para sua segurança e a de nossas passageiras, precisamos que envie uma foto do seu rosto e da sua CNH (frente e verso).</p>
     
     <form id="formDocs">
+      <div class="form-group">
+        <label for="fotoRosto">Foto do Rosto</label>
+        <input type="file" id="fotoRosto" accept="image/*" required>
+      </div>
       <div class="form-group">
         <label for="cnhFrente">CNH (Frente)</label>
         <input type="file" id="cnhFrente" accept="image/*, application/pdf" required>
@@ -160,15 +164,16 @@
         return;
       }
 
-      const cnhFrenteFile = document.getElementById('cnhFrente').files[0];
-      const cnhVersoFile = document.getElementById('cnhVerso').files[0];
-
-      if (!cnhFrenteFile || !cnhVersoFile) {
-        statusMessageDiv.textContent = "Por favor, selecione os dois arquivos da CNH.";
-        statusMessageDiv.className = "error";
-        statusMessageDiv.style.display = 'block';
-        return;
-      }
+const fotoRostoFile = document.getElementById('fotoRosto').files[0];
+	      const cnhFrenteFile = document.getElementById('cnhFrente').files[0];
+	      const cnhVersoFile = document.getElementById('cnhVerso').files[0];
+	
+	      if (!fotoRostoFile || !cnhFrenteFile || !cnhVersoFile) {
+	        statusMessageDiv.textContent = "Por favor, selecione a foto do rosto e os dois arquivos da CNH.";
+	        statusMessageDiv.className = "error";
+	        statusMessageDiv.style.display = 'block';
+	        return;
+	      }
 
       submitButton.disabled = true;
       statusMessageDiv.style.display = 'block';
@@ -176,40 +181,46 @@
       statusMessageDiv.className = "";
 
       try {
-        // 1. Determinar nomes de arquivo dinamicamente com extensão correta
-        const frenteExt = getFileExtension(cnhFrenteFile);
-        const versoExt = getFileExtension(cnhVersoFile);
-
-        const frentePath = `documentos/${currentUser.uid}/cnh_frente${frenteExt}`;
-        const versoPath = `documentos/${currentUser.uid}/cnh_verso${versoExt}`;
-        
-        const frenteStorageRef = storageRef(storage, frentePath);
-        const versoStorageRef = storageRef(storage, versoPath);
-
-        // 2. Upload de arquivos
-        const uploadFrentePromise = uploadBytes(frenteStorageRef, cnhFrenteFile);
-        const uploadVersoPromise = uploadBytes(versoStorageRef, cnhVersoFile);
-        
-        await Promise.all([uploadFrentePromise, uploadVersoPromise]);
-
-        // 3. Obter URLs públicas
-        const frenteUrlPromise = getDownloadURL(frenteStorageRef);
-        const versoUrlPromise = getDownloadURL(versoStorageRef);
-
-        const [cnh_frente_url, cnh_verso_url] = await Promise.all([frenteUrlPromise, versoUrlPromise]);
+// 1. Determinar nomes de arquivo dinamicamente com extensão correta
+	        const rostoExt = getFileExtension(fotoRostoFile);
+	        const frenteExt = getFileExtension(cnhFrenteFile);
+	        const versoExt = getFileExtension(cnhVersoFile);
+	
+	        const rostoPath = `documentos/${currentUser.uid}/foto_rosto${rostoExt}`;
+	        const frentePath = `documentos/${currentUser.uid}/cnh_frente${frenteExt}`;
+	        const versoPath = `documentos/${currentUser.uid}/cnh_verso${versoExt}`;
+	        
+	        const rostoStorageRef = storageRef(storage, rostoPath);
+	        const frenteStorageRef = storageRef(storage, frentePath);
+	        const versoStorageRef = storageRef(storage, versoPath);
+	
+	        // 2. Upload de arquivos
+	        const uploadRostoPromise = uploadBytes(rostoStorageRef, fotoRostoFile);
+	        const uploadFrentePromise = uploadBytes(frenteStorageRef, cnhFrenteFile);
+	        const uploadVersoPromise = uploadBytes(versoStorageRef, cnhVersoFile);
+	        
+	        await Promise.all([uploadRostoPromise, uploadFrentePromise, uploadVersoPromise]);
+	
+	        // 3. Obter URLs públicas
+	        const rostoUrlPromise = getDownloadURL(rostoStorageRef);
+	        const frenteUrlPromise = getDownloadURL(frenteStorageRef);
+	        const versoUrlPromise = getDownloadURL(versoStorageRef);
+	
+	        const [foto_rosto_url, cnh_frente_url, cnh_verso_url] = await Promise.all([rostoUrlPromise, frenteUrlPromise, versoUrlPromise]);
 
         // 4. Salvar dados no Realtime Database
         // *** IMPORTANTE: Salva no nó 'motoristas' ***
         const motoristaRef = databaseRef(database, `motoristas/${currentUser.uid}`);
         
-        await update(motoristaRef, {
-          uid: currentUser.uid,
-          nome: currentUser.displayName,
-          email: currentUser.email,
-          cnh_frente_url: cnh_frente_url,
-          cnh_verso_url: cnh_verso_url,
-          status: 'pendente' // Status para aprovação do Admin
-        });
+await update(motoristaRef, {
+	          uid: currentUser.uid,
+	          nome: currentUser.displayName,
+	          email: currentUser.email,
+	          foto_rosto_url: foto_rosto_url, // Adicionado
+	          cnh_frente_url: cnh_frente_url,
+	          cnh_verso_url: cnh_verso_url,
+	          status: 'pendente' // Status para aprovação do Admin
+	        });
 
         statusMessageDiv.textContent = "Documentos enviados com sucesso! Nossa equipe irá analisá-los.";
         statusMessageDiv.className = "success";

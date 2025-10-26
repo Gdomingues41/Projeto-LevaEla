@@ -74,6 +74,8 @@
       userName.textContent = user.displayName || "Nome não definido";
       userEmail.textContent = user.email;
 
+      // O código original estava buscando em 'usuarios', mas o upload_documentos usa 'motoristas'.
+      // Para consistência, vou manter 'usuarios' aqui, mas é importante verificar o nó correto.
       const userRef = ref(database, `usuarios/${user.uid}`);
       const snapshot = await get(userRef);
       if (snapshot.exists() && snapshot.val().profileImageUrl) {
@@ -93,6 +95,12 @@
       }
     });
 
+    // Função auxiliar para obter a extensão do arquivo
+    function getFileExtension(file) {
+        if (!file || !file.name) return '';
+        return '.' + file.name.split('.').pop();
+    }
+
     // Salvar a nova foto
     saveButton.addEventListener('click', async () => {
       if (!selectedFile) {
@@ -104,10 +112,16 @@
 
       saveButton.disabled = true;
       saveButton.textContent = "Enviando...";
-      statusMessage.textContent = "";
+      statusMessage.textContent = "Iniciando upload...";
+      statusMessage.className = "mt-4 text-sm font-medium text-gray-600";
 
       try {
-        const filePath = `profile_pictures/${currentUser.uid}/${selectedFile.name}`;
+        // CORREÇÃO: Usar um nome de arquivo único para evitar problemas de cache e garantir o upload
+        const extension = getFileExtension(selectedFile);
+        const uniqueFileName = `profile_${Date.now()}${extension}`;
+        
+        // Caminho de armazenamento: profile_pictures/{uid}/profile_timestamp.ext
+        const filePath = `profile_pictures/${currentUser.uid}/${uniqueFileName}`;
         const fileRef = storageRef(storage, filePath);
         
         // 1. Faz o upload do arquivo
@@ -117,6 +131,7 @@
         const url = await getDownloadURL(fileRef);
 
         // 3. Salva a URL no perfil do usuário no Realtime Database
+        // Mantendo o nó 'usuarios' como estava no código original
         const userDbRef = ref(database, `usuarios/${currentUser.uid}`);
         await update(userDbRef, {
           profileImageUrl: url
@@ -125,9 +140,10 @@
         statusMessage.textContent = "Foto de perfil atualizada com sucesso!";
         statusMessage.className = "mt-4 text-sm font-medium text-green-600";
         selectedFile = null; // Reseta a seleção
+        fileInput.value = ''; // Limpa o input file para permitir novo upload do mesmo arquivo
       } catch (error) {
         console.error("Erro ao salvar a foto:", error);
-        statusMessage.textContent = "Erro ao salvar a foto. Tente novamente.";
+        statusMessage.textContent = "Erro ao salvar a foto. Tente novamente. Verifique as regras do Firebase Storage.";
         statusMessage.className = "mt-4 text-sm font-medium text-red-500";
       } finally {
         saveButton.disabled = false;
