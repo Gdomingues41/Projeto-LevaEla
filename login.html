@@ -1,37 +1,166 @@
-...
-<script type="module">
-    // ... (restante do código FirebaseConfig e imports)
-    // ...
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login - LevaEla</title>
+  <style>
+    body { 
+      font-family: 'Arial', sans-serif; 
+      background: linear-gradient(to bottom, #7b1e7a, #ea638c); 
+      margin: 0; 
+      padding: 0; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      height: 100vh; 
+      justify-content: center; 
+      color: white; 
+    }
+    img { 
+      max-height: 150px; 
+      margin-bottom: 30px; 
+    }
+    form { 
+      background-color: white; 
+      color: #7b1e7a; 
+      padding: 2.5rem; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+      width: 90%; 
+      max-width: 400px; 
+      display: flex; 
+      flex-direction: column; 
+    }
+    input { 
+      padding: 0.9rem; 
+      margin-bottom: 1rem; 
+      border: 1px solid #ccc; 
+      border-radius: 8px; 
+      font-size: 1rem; 
+    }
+    button { 
+      background-color: #ea638c; 
+      color: white; 
+      border: none; 
+      padding: 1rem; 
+      border-radius: 8px; 
+      font-size: 1rem; 
+      cursor: pointer; 
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #d15880;
+    }
+    .links {
+      text-align: center; 
+      margin-top: 1.5rem; 
+      color: #7b1e7a; 
+      font-size: 0.9rem;
+    }
+    .links a {
+      text-decoration: underline; 
+      color: #ea638c;
+      font-weight: bold;
+    }
+    #erroMsg {
+      color: #D8000C; /* Vermelho escuro */
+      background-color: #FFD2D2; /* Fundo vermelho claro */
+      border: 1px solid #D8000C;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      text-align: center;
+      display: none; /* Começa escondido */
+    }
+  </style>
+</head>
+<body>
+  <img src="https://i.imgur.com/1n7hPPu.png" alt="Logo LevaEla" />
+  
+  <form id="formLogin">
+    <h2 style="text-align: center; margin-top: 0;">Login</h2>
+    
+    <div id="erroMsg"></div> <label for="email" style="margin-bottom: 0.25rem; font-weight: bold;">E-mail:</label>
+    <input type="email" id="email" name="email" placeholder="seuemail@exemplo.com" required />
+    
+    <label for="senha" style="margin-bottom: 0.25rem; font-weight: bold;">Senha:</label>
+    <input type="password" id="senha" name="senha" placeholder="Sua senha" required />
+    
+    <button type="submit">Entrar</button>
+
+    <div class="links">
+        Ainda não tem uma conta? <a href="index.html">Cadastre-se aqui</a>.
+    </div>
+    </form>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBZa8UhRH8dp3l4kx6cZZWdUTZbSW5nH-E",
+      authDomain: "levaela.firebaseapp.com",
+      databaseURL: "https://levaela-default-rtdb.firebaseio.com",
+      projectId: "levaela",
+      storageBucket: "levaela.appspot.com",
+      messagingSenderId: "136273132346",
+      appId: "1:136273132346:web:8fca530c9c039ceaaeae03"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
 
     const formLogin = document.getElementById('formLogin');
+    const erroMsg = document.getElementById('erroMsg');
+
     formLogin.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = formLogin.email.value.trim();
       const senha = formLogin.senha.value.trim();
-      const erroMsg = document.getElementById('erroMsg');
-      
+      erroMsg.style.display = 'none'; // Esconde o erro
+
       try {
         const userCredential = await signInWithEmailAndPassword(auth, email, senha);
         const user = userCredential.user;
+        
+        // Agora, buscamos os dados do usuário no Realtime Database
         const userRef = ref(database, 'usuarios/' + user.uid);
         const snapshot = await get(userRef);
+        
         if (snapshot.exists()) {
           const userData = snapshot.val();
-          // CORREÇÃO: Redireciona a passageira para o novo painel de solicitação de corrida
-          if (userData.tipo === 'passageira') window.location.href = 'painel_solicitar_corrida.html';
-          else if (userData.tipo === 'motorista') window.location.href = 'painel_motorista.html';
-          else if (userData.tipo === 'admin') window.location.href = 'painel_admin.html';
-          else window.location.href = 'index.html';
+          
+          // Lógica de redirecionamento baseada no 'tipo' do usuário
+          if (userData.tipo === 'passageira') {
+            window.location.href = 'painel_solicitar_corrida.html';
+          } else if (userData.tipo === 'motorista') {
+            window.location.href = 'painel_motorista.html';
+          } else if (userData.tipo === 'admin') {
+            window.location.href = 'painel_admin.html'; // Ou tela_admin.html
+          } else {
+            // Um fallback, caso o tipo não esteja definido
+            window.location.href = 'index.html'; 
+          }
         } else {
+          // Se o usuário existe no Auth mas não no Database (raro, mas possível)
           await auth.signOut();
-          erroMsg.textContent = "Dados de usuário não encontrados.";
+          erroMsg.textContent = "Dados de usuário não encontrados. Tente se cadastrar.";
+          erroMsg.style.display = 'block';
         }
       } catch (error) {
-        erroMsg.textContent = "E-mail ou senha inválidos.";
+        // Trata erros de autenticação (email/senha errados)
+        console.error("Erro de login:", error.code);
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+          erroMsg.textContent = "E-mail ou senha inválidos.";
+        } else {
+          erroMsg.textContent = "Ocorreu um erro. Tente novamente.";
+        }
+        erroMsg.style.display = 'block';
       }
     });
-
-    // ... (restante do código de recuperação de senha)
   </script>
 </body>
 </html>

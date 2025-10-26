@@ -17,7 +17,8 @@
 
     <h2 id="userName" class="text-xl font-semibold mb-2">Carregando...</h2>
     <p id="userEmail" class="text-gray-500 mb-6">...</p>
-    <p class="text-lg text-gray-700 font-semibold mb-4">Aguarde por solicitações de corrida. Sua aprovação está pendente.</p>
+    
+    <p id="statusMessage" class="text-lg text-gray-700 font-semibold mb-4">Aguarde por solicitações de corrida. Sua aprovação está pendente.</p>
     
     <a href="tela_de_avaliacao.html?corridaId=exemplo123" class="bg-yellow-400 hover:bg-yellow-500 text-purple-900 font-bold py-3 px-6 rounded-lg w-full text-lg block">
       Avaliar Viagem (Exemplo)
@@ -45,16 +46,52 @@
     const auth = getAuth(app);
     const database = getDatabase(app);
 
+    // Seleciona os elementos da UI que vamos alterar
+    const userNameEl = document.getElementById('userName');
+    const userEmailEl = document.getElementById('userEmail');
+    const userPhotoEl = document.getElementById('userPhoto');
+    const statusTextEl = document.getElementById('statusMessage'); // O parágrafo da mensagem
+    const avaliarButtonEl = document.querySelector('a[href^="tela_de_avaliacao.html"]'); // O botão de avaliar
+
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        document.getElementById('userName').textContent = user.displayName || "Nome não definido";
-        document.getElementById('userEmail').textContent = user.email;
+        // 1. Pega dados básicos do nó 'usuarios'
+        userNameEl.textContent = user.displayName || "Nome não definido";
+        userEmailEl.textContent = user.email;
 
         const userRef = ref(database, `usuarios/${user.uid}`);
-        const snapshot = await get(userRef);
-        if (snapshot.exists() && snapshot.val().profileImageUrl) {
-          document.getElementById('userPhoto').src = snapshot.val().profileImageUrl;
+        const userSnapshot = await get(userRef);
+        if (userSnapshot.exists() && userSnapshot.val().profileImageUrl) {
+          userPhotoEl.src = userSnapshot.val().profileImageUrl;
         }
+        
+        // 2. CORREÇÃO: Pega o status de aprovação do nó 'motoristas'
+        const motoristaRef = ref(database, `motoristas/${user.uid}`);
+        const motoristaSnapshot = await get(motoristaRef);
+
+        if (motoristaSnapshot.exists()) {
+          const motoristaData = motoristaSnapshot.val();
+          
+          if (motoristaData.status === 'aprovado') {
+            statusTextEl.textContent = "Você está online e pronta para receber corridas.";
+            statusTextEl.className = "text-lg text-green-700 font-semibold mb-4"; // Muda a cor para verde
+            
+          } else if (motoristaData.status === 'reprovado') {
+            statusTextEl.textContent = "Seu cadastro foi reprovado. Por favor, entre em contato.";
+            statusTextEl.className = "text-lg text-red-700 font-semibold mb-4"; // Muda a cor para vermelho
+            avaliarButtonEl.style.display = 'none'; // Esconde botão de avaliar
+
+          } else { // 'pendente'
+            statusTextEl.textContent = "Aguarde... Seu cadastro está em análise pela nossa equipe.";
+            statusTextEl.className = "text-lg text-yellow-700 font-semibold mb-4"; // Muda a cor para amarelo
+          }
+        } else {
+          // Isso acontece se ela se cadastrou mas não enviou os docs ainda
+           statusTextEl.textContent = "Por favor, complete o envio de seus documentos.";
+           statusTextEl.className = "text-lg text-red-700 font-semibold mb-4";
+           avaliarButtonEl.style.display = 'none'; 
+        }
+
       } else {
         window.location.href = "login.html";
       }

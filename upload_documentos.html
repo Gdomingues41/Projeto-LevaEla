@@ -199,6 +199,7 @@
         const [cnh_frente_url, cnh_verso_url] = await Promise.all([frenteUrlPromise, versoUrlPromise]);
 
         // 4. Salvar dados no Realtime Database
+        // *** IMPORTANTE: Salva no nó 'motoristas' ***
         const motoristaRef = databaseRef(database, `motoristas/${currentUser.uid}`);
         
         await update(motoristaRef, {
@@ -215,7 +216,9 @@
         
         // 5. Redirecionar para a próxima página após a mensagem
         setTimeout(() => {
-          window.location.href = 'documentação.html'; // Página a ser criada/ajustada
+          // *** CORREÇÃO APLICADA AQUI ***
+          // Redireciona para o painel da motorista, onde ela verá o status "pendente"
+          window.location.href = 'painel_motorista.html';
         }, 3000);
 
       } catch (error) {

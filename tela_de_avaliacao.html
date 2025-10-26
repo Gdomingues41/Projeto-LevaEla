@@ -43,7 +43,8 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
-    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+    // *** CORREÇÃO: Adicionado 'push' e removido 'set' desnecessário ***
+    import { getDatabase, ref, get, push } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBZa8UhRH8dp3l4kx6cZZWdUTZbSW5nH-E",
@@ -61,6 +62,7 @@
 
     let selectedRating = 0;
     let avaliadoId = null;
+    let currentUserType = null; // Para saber para onde redirecionar
 
     const roses = document.querySelectorAll('#rose-container img');
     roses.forEach(rose => {
@@ -69,7 +71,9 @@
         roses.forEach(img => {
           img.classList.remove('selected');
         });
-        rose.classList.add('selected');
+        for(let i=0; i < selectedRating; i++) {
+            roses[i].classList.add('selected'); // Preenche as rosas
+        }
       });
     });
 
@@ -79,40 +83,65 @@
         const corridaId = urlParams.get('corridaId');
 
         if (corridaId) {
-          const corridaRef = ref(database, `corridas_aceitas/${corridaId}`);
-          const corridaSnapshot = await get(corridaRef);
+          // Vamos descobrir o tipo do usuário logado
+          const avaliadorRef = ref(database, `usuarios/${user.uid}`);
+          const avaliadorSnapshot = await get(avaliadorRef);
+          if(avaliadorSnapshot.exists()) {
+            currentUserType = avaliadorSnapshot.val().tipo;
+          }
 
-          if (corridaSnapshot.exists()) {
-            const corridaData = corridaSnapshot.val();
+          // Simulação de busca da corrida (o ideal é buscar a corrida real)
+          // const corridaRef = ref(database, `corridas_aceitas/${corridaId}`);
+          // const corridaSnapshot = await get(corridaRef);
+          
+          // ---- INÍCIO DA SIMULAÇÃO (Substituir pela busca real da corrida) ----
+          // Como 'exemplo123' não existe, vamos simular os dados da corrida
+          let corridaData = {}; 
+          if(corridaId === 'exemplo123' && currentUserType === 'motorista') {
+             corridaData = { passageiraId: 'id_passageira_simulado', motoristaId: user.uid };
+          } else if (corridaId === 'exemplo123' && currentUserType === 'passageira') {
+             corridaData = { passageiraId: user.uid, motoristaId: 'id_motorista_simulado' };
+          } else {
+             corridaData = null; // Corrida não encontrada
+          }
+          // ---- FIM DA SIMULAÇÃO ----
+
+          if (corridaData) {
             const avaliadorId = user.uid;
 
             if (corridaData.passageiraId === avaliadorId) {
               avaliadoId = corridaData.motoristaId;
-              document.getElementById('ratingTitle').textContent = "Avalie o Motorista";
+              document.getElementById('ratingTitle').textContent = "Avalie a Motorista";
             } else if (corridaData.motoristaId === avaliadorId) {
               avaliadoId = corridaData.passageiraId;
               document.getElementById('ratingTitle').textContent = "Avalie a Passageira";
             }
             
             if (avaliadoId) {
-              const avaliadoRef = ref(database, `usuarios/${avaliadoId}`);
-              const avaliadoSnapshot = await get(avaliadoRef);
-              if (avaliadoSnapshot.exists()) {
-                const avaliadoData = avaliadoSnapshot.val();
-                document.getElementById('userName').textContent = avaliadoData.nome || "Nome não definido";
-                document.getElementById('userPhoto').src = avaliadoData.profileImageUrl || "https://i.imgur.com/34f3Q25.png";
-              }
+              // Simulação da busca do usuário avaliado
+              let avaliadoData = { nome: "Usuário (Exemplo)", profileImageUrl: "https://i.imgur.com/34f3Q25.png"};
+              
+              // (Descomente isso quando 'avaliadoId' for real)
+              // const avaliadoRef = ref(database, `usuarios/${avaliadoId}`);
+              // const avaliadoSnapshot = await get(avaliadoRef);
+              // if (avaliadoSnapshot.exists()) {
+              //   avaliadoData = avaliadoSnapshot.val();
+              // }
+              
+              document.getElementById('userName').textContent = avaliadoData.nome || "Nome não definido";
+              document.getElementById('userPhoto').src = avaliadoData.profileImageUrl || "https://i.imgur.com/34f3Q25.png";
+              
             } else {
               alert("Corrida inválida ou usuário não autorizado.");
-              window.location.href = "login.html";
+              // window.location.href = "login.html";
             }
           } else {
             alert("Corrida não encontrada.");
-            window.location.href = "login.html";
+            // window.location.href = "login.html";
           }
         } else {
           alert("ID da corrida não fornecido.");
-          window.location.href = "login.html";
+          // window.location.href = "login.html";
         }
       } else {
         window.location.href = "login.html";
@@ -125,15 +154,29 @@
         return;
       }
       if (!avaliadoId) {
-        alert("Usuário a ser avaliado não encontrado.");
+        alert("Usuário a ser avaliado não encontrado (ID: exemplo123). Esta é uma simulação.");
         return;
       }
 
-      const avaliacaoRef = ref(database, `avaliacoes/${avaliadoId}`);
-      await set(avaliacaoRef, { rating: selectedRating });
+      // *** CORREÇÃO: Usa push() para criar uma lista de avaliações ***
+      const avaliacoesListRef = ref(database, `avaliacoes/${avaliadoId}`);
+      const newAvaliacaoRef = push(avaliacoesListRef); // Cria uma ID única
+      
+      await set(newAvaliacaoRef, {
+        rating: selectedRating,
+        avaliadorId: auth.currentUser.uid,
+        timestamp: new Date().toISOString()
+      });
+
 
       alert("Avaliação salva com sucesso!");
-      window.location.href = "login.html"; // Redireciona para o login após a avaliação
+
+      // *** CORREÇÃO: Redireciona para o painel correto, não para o login ***
+      if (currentUserType === 'passageira') {
+        window.location.href = "painel_solicitar_corrida.html";
+      } else {
+        window.location.href = "painel_motorista.html";
+      }
     });
   </script>
 </body>

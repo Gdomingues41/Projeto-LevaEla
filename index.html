@@ -78,8 +78,11 @@
             alert("Cadastro inicial realizado! Agora envie seus documentos.");
             window.location.href = "upload_documentos.html"; 
         } else {
-            alert("Cadastro realizado com sucesso!");
-            window.location.href = "login.html";
+            // *** CORREÇÃO APLICADA AQUI ***
+            // Leva a passageira para o perfil para adicionar a foto,
+            // em vez de ir direto para o login.
+            alert("Cadastro realizado com sucesso! Por favor, adicione sua foto de perfil.");
+            window.location.href = "perfil.html";
         }
       } catch (error) {
         alert("Erro no cadastro: " + error.message);

@@ -70,7 +70,7 @@
         <th>Distância (km)</th>
         <th>Valor Total</th>
         <th>Comissão (10%)</th>
-        <th>Motorista</th>
+        <th>Valor (Motorista)</th>
         <th>Data</th>
       </tr>
     </thead>
@@ -96,6 +96,7 @@
 
     const tabela = document.getElementById('tabelaCorridas');
 
+    // Assumindo que a estrutura é /corridas_aceitas/{motoristaId}/{corridaId}
     const corridasRef = ref(db, 'corridas_aceitas');
     onValue(corridasRef, snapshot => {
       tabela.innerHTML = '';
